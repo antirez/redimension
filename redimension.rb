@@ -1,13 +1,3 @@
-# TODO
-#
-# Abtract to N dimensions
-#
-# Filter points outside the specified dimensions.
-#
-# Document that you can pass a Redis object which just implements
-# zadd to collect the operations to add, without executing it, so that
-# for instance it is possible to pipeline adds or alike.
-
 require 'rubygems'
 require 'redis'
 

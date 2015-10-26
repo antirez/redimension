@@ -1,0 +1,11 @@
+TODO
+====
+
+* Abtract to N dimensions.
+
+* Filter points outside the specified dimensions.
+
+* Use pipelining to send all the ZRANGEBYLEX queries.
+
+* Some way to support pipelined add of multiple points.
+  Perhaps just r.pipelined { idex.add(...) } ?
