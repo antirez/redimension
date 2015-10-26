@@ -100,24 +100,3 @@ class Redimension
     end
 end
 
-redis = Redis.new()
-redis.del("myindex")
-rn = Redimension.new(redis,"myindex")
-
-rn.index(10,10,1)
-rn.index(20,20,2)
-rn.index(60,200,3)
-rn.index(100,100,4)
-rn.index(100,300,5)
-
-puts rn.query(50,100,100,300).inspect
-
-redis.del("fuzzy")
-rn = Redimension.new(redis,"fuzzy")
-id = 0
-10000.times {
-    rn.index(rand(1000),rand(1000),id)
-    id += 1
-}
-
-puts rn.query(50,50,100,100).inspect
