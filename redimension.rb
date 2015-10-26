@@ -86,7 +86,7 @@ class Redimension
         delta = y1-y0
         delta = deltax if deltax < delta
         exp = 1
-        while delta > 1
+        while delta > 2
             delta /= 2
             exp += 1
         end
