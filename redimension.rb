@@ -2,8 +2,13 @@ require 'rubygems'
 require 'redis'
 
 class Redimension 
-    def initialize(redis,key)
+    attr_accessor :debug
+    attr_reader :redis, :key, :dim, :prec
+
+    def initialize(redis,key,dim,prec)
+        @debug = false
         @redis = redis
+        @dim = dim
         @key = key
         @prec = 64
         @idmap = false
@@ -34,33 +39,46 @@ class Redimension
     # we use in the range query. Two times the exponent is the number
     # of bits we unset and set to get the start and end points of the range.
     def query_raw(x0,y0,x1,y1,exp)
-        items = []
         x_start = x0/(2**exp)
         x_end = x1/(2**exp)
         y_start = y0/(2**exp)
         y_end = y1/(2**exp)
+        ranges = []
         (x_start..x_end).each{|x|
             (y_start..y_end).each{|y|
                 x_range_start = x*(2**exp)
                 x_range_end = x_range_start | ((2**exp)-1)
                 y_range_start = y*(2**exp)
                 y_range_end = y_range_start | ((2**exp)-1)
-                puts "#{x},#{y} x from #{x_range_start} to #{x_range_end}, y from #{y_range_start} to #{y_range_end}"
+                puts "#{x},#{y} x from #{x_range_start} to #{x_range_end}, y from #{y_range_start} to #{y_range_end}" if @debug
 
                 # Turn it into interleaved form for ZRANGEBYLEX query.
                 s = encode(x_range_start,y_range_start)
                 # Now that we have the start of the range, calculate the end
                 # by replacing the specified number of bits from 0 to 1.
                 e = encode(x_range_end,y_range_end)
-                res = @redis.zrangebylex(@key,"[#{s}:","[#{e}:\xff")
-                res.each{|item|
-                    fields = item.split(":")
-                    ele_x = fields[1].to_i
-                    ele_y = fields[2].to_i
-                    items << [ele_x,ele_y,fields[3]] \
-                        if (ele_x >= x0 && ele_x <= x1 &&
-                            ele_y >= y0 && ele_y <= y1)
-                }
+                ranges << ["[#{s}:","[#{e}:\xff"]
+            }
+        }
+
+        # Perform ZRANGEBYLEX queries to collect the results from the
+        # defined ranges.
+        allres = @redis.pipelined {
+            ranges.each{|range|
+                @redis.zrangebylex(@key,range[0],range[1])
+            }
+        }
+
+        # Filter items according to the requested limits.
+        items = []
+        allres.each{|res|
+            res.each{|item|
+                fields = item.split(":")
+                ele_x = fields[1].to_i
+                ele_y = fields[2].to_i
+                items << [ele_x,ele_y,fields[3]] \
+                    if (ele_x >= x0 && ele_x <= x1 &&
+                        ele_y >= y0 && ele_y <= y1)
             }
         }
         items

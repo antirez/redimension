@@ -3,7 +3,7 @@ require "./redimension.rb"
 redis = Redis.new()
 
 redis.del("fuzzy")
-rn = Redimension.new(redis,"fuzzy")
+rn = Redimension.new(redis,"fuzzy",2,64)
 id = 0
 dataset = []
 1000.times {
@@ -21,7 +21,7 @@ dataset = []
     y1 = rand(1000)
     x0,x1=x1,x0 if x0>x1
     y0,y1=y1,y0 if y0>y1
-    puts "\nTESTING #{[x0,y0,x1,y1].inspect}"
+    puts "TESTING #{[x0,y0,x1,y1].inspect}"
     res1 = rn.query(x0,y0,x1,y1)
     res2 = dataset.select{|i|
         i[0] >= x0 && i[0] <= x1 &&
