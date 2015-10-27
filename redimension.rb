@@ -52,7 +52,7 @@ class Redimension
                 # Now that we have the start of the range, calculate the end
                 # by replacing the specified number of bits from 0 to 1.
                 e = encode(x_range_end,y_range_end)
-                res = @redis.zrangebylex(@key,"[#{s}","[#{e}")
+                res = @redis.zrangebylex(@key,"[#{s}:","[#{e}:\xff")
                 res.each{|item|
                     fields = item.split(":")
                     ele_x = fields[1].to_i

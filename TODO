@@ -9,3 +9,8 @@ TODO
 
 * Some way to support pipelined add of multiple points.
   Perhaps just r.pipelined { idex.add(...) } ?
+
+* For queries with very unbalanced dimensions spawn (for example querying
+  a rectangle from 10,10, to 1000,11), it may be good to perform some
+  sampling to check density of points in order to better adapt the
+  query bits size.
