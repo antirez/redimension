@@ -10,7 +10,7 @@ dataset = []
     x = rand(1000)
     y = rand(1000)
     dataset << [x,y,id.to_s]
-    rn.index(x,y,id)
+    rn.index([x,y],id)
     id += 1
 }
 
@@ -21,8 +21,14 @@ dataset = []
     y1 = rand(1000)
     x0,x1=x1,x0 if x0>x1
     y0,y1=y1,y0 if y0>y1
-    puts "TESTING #{[x0,y0,x1,y1].inspect}"
-    res1 = rn.query(x0,y0,x1,y1)
+
+    print "TESTING #{[x0,y0,x1,y1].inspect}: "
+    STDOUT.flush
+
+    start_t = Time.now
+    res1 = rn.query([[x0,x1],[y0,y1]])
+    end_t = Time.now
+    print "#{res1.length} result in #{(end_t-start_t).to_f} seconds\n"
     res2 = dataset.select{|i|
         i[0] >= x0 && i[0] <= x1 &&
         i[1] >= y0 && i[1] <= y1
