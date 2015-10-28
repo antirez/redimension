@@ -67,7 +67,8 @@ class Redimension
         # Visit all the sub-areas to cover our N-dim search region.
         ranges = []
         vcurrent = vstart.dup
-        while true
+        notdone = true
+        while notdone
             # For each sub-region, encode all the start-end ranges
             # for each dimension.
             vrange_start = []
@@ -92,11 +93,12 @@ class Redimension
             # Increment to loop in N dimensions in order to visit
             # all the sub-areas representing the N dimensional area to
             # query.
-            break if vcurrent == vend
             (0...@dim).each{|i|
                 if vcurrent[i] != vend[i]
                     vcurrent[i] += 1
                     break
+                elsif i == dim-1
+                    notdone = false; # Visited everything!
                 else
                     vcurrent[i] = vstart[i]
                 end
