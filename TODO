@@ -9,3 +9,5 @@ TODO
   number of additional queries.
 
 * Implement unindex and unindex by ID methods with Hash mapping.
+
+* Binary encoding to save space instead of using hex to represent each byte as two.
