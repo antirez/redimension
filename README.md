@@ -34,10 +34,9 @@ by salary and age:
     myindex = Redimension.new(redis,"people-by-salary",2,64)
 
 We created a Redimension object specifying a Redis object that must respond
-to the Redis commands (but only ZADD and ZRANGEBYLEX are used). We specified
-we want 2D indexing, and 64 bits of precision for each dimension.
-The first argument is the key name that will represent the index as a
-sorted set.
+to the Redis commands. We specified we want 2D indexing, and 64 bits of
+precision for each dimension. The first argument is the key name that will
+represent the index as a sorted set.
 
 Now we can add elements to our index.
 
