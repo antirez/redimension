@@ -6,7 +6,6 @@ def fuzzy_test(dim,items,queries)
     redis = Redis.new()
     redis.del("redim-fuzzy")
     rn = Redimension.new(redis,"redim-fuzzy",dim,64)
-#    rn.debug = true
     id = 0
     dataset = []
     1000.times {
@@ -54,6 +53,6 @@ def fuzzy_test(dim,items,queries)
     redis.del("redim-fuzzy")
 end
 
-fuzzy_test(3,1000,1000)
+fuzzy_test(4,100,1000)
+fuzzy_test(3,100,1000)
 fuzzy_test(2,1000,1000)
-fuzzy_test(4,1000,1000)
