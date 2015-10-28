@@ -51,7 +51,7 @@ class Redimension
     end
 
     # exp is the exponent of two that gives the size of the squares
-    # we use in the range query. Two times the exponent is the number
+    # we use in the range query. N times the exponent is the number
     # of bits we unset and set to get the start and end points of the range.
     def query_raw(vrange,exp)
         vstart = []
@@ -66,9 +66,8 @@ class Redimension
 
         # Visit all the sub-areas to cover our N-dim search region.
         ranges = []
-        notdone = true
         vcurrent = vstart.dup
-        while notdone
+        while true
             # For each sub-region, encode all the start-end ranges
             # for each dimension.
             vrange_start = []
@@ -93,12 +92,11 @@ class Redimension
             # Increment to loop in N dimensions in order to visit
             # all the sub-areas representing the N dimensional area to
             # query.
+            break if vcurrent == vend
             (0...@dim).each{|i|
                 if vcurrent[i] != vend[i]
                     vcurrent[i] += 1
                     break
-                elsif i == dim-1
-                    notdone = false; # Visited everything!
                 else
                     vcurrent[i] = vstart[i]
                 end
