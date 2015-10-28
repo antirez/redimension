@@ -83,7 +83,7 @@ One will simply remove an item from the index just by ID:
 
     myindex.unindex_by_id("Josh")
 
-The other is a variant of `index` that remove and re-add the element with
+The other is a variant of `index` that removes and re-adds the element with
 the updated coordinates:
 
     myindex.update([46,120000],"Josh")
