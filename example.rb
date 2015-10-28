@@ -3,6 +3,7 @@ require 'redis'
 require "./redimension.rb"
 
 redis = Redis.new
+redis.del("people-by-salary")
 myindex = Redimension.new(redis,"people-by-salary",2,64)
 myindex.index([45,120000],"Josh")
 myindex.index([50,110000],"Pamela")

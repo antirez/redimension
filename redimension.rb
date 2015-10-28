@@ -1,5 +1,5 @@
 class Redimension 
-    attr_accessor :debug
+    attr_accessor :debug, :hashkey
     attr_reader :redis, :key, :dim, :prec
 
     def initialize(redis,key,dim,prec)
@@ -8,7 +8,7 @@ class Redimension
         @dim = dim
         @key = key
         @prec = 64
-        @idmap = false
+        @hashkey = false
         @binary = false # Default is hex encoding
     end
 
@@ -29,25 +29,53 @@ class Redimension
         comb.to_i.to_s(16).rjust(@prec*@dim/4,'0')
     end
 
-    # Add a variable with associated data 'id'
-    def index(vars,id)
+    # Encode an element coordinates and ID as the whole string to add
+    # into the sorted set.
+    def elestring(vars,id)
         check_dim(vars)
         ele = encode(vars)
         vars.each{|v| ele << ":#{v}"}
         ele << ":#{id}"
-        @redis.zadd(@key,0,ele)
+    end
+
+    # Add a variable with associated data 'id'
+    def index(vars,id)
+        ele = elestring(vars,id)
+        @redis.multi {
+            @redis.zadd(@key,0,ele)
+            @redis.hset(@hashkey,id,ele)
+        }
     end
 
     # ZREM according to current position in the space and ID.
     def unindex(vars,id)
-        # TODO
+        @redis.zrem(@key,elestring(vars,id))
     end
 
-    # Unidex by just ID in case @idmap is set to true in order to take
+    # Unidex by just ID in case @hashkey is set to true in order to take
     # an associated Redis hash with ID -> current indexed representation,
     # so that the user can unindex easily.
-    def unindex_id(id)
-        # TODO
+    def unindex_by_id(id)
+        raise "Please specifiy an hash key with #hashkey to enable mapping" if !@hashkey
+        ele = @redis.hget(@hashkey,id)
+        @redis.multi {
+            @redis.zrem(@key,ele)
+            @redis.hdel(@hashkey,id)
+        }
+    end
+
+    # Like #index but makes sure to remove the old index for the specified
+    # id. Requires hash mapping enabled.
+    def update(vars,id)
+        raise "Please specifiy an hash key with #hashkey to enable mapping" if !@hashkey
+        ele = elestring(vars,id)
+        oldele = @redis.hget(@hashkey,id)
+        @redis.multi {
+            @redis.zrem(@key,oldele)
+            @redis.hdel(@hashkey,id)
+            @redis.zadd(@key,0,ele)
+            @redis.hset(@hashkey,id,ele)
+        }
     end
 
     # exp is the exponent of two that gives the size of the squares

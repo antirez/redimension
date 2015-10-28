@@ -61,6 +61,39 @@ only index integers so just increment/decrement to exclude a given value.
 If you want to play with the library, the above example is shipped with
 the source code, the file is called `example.rb`.
 
+Unindexing
+===
+
+There are two ways in order to remove indexed data from the index. One
+is to specify again the coordinates and the ID, using the `unindex` method:
+
+    myindex.unindex([45,120000],"Josh")
+
+However sometimes it is no longer possible to have the old data, we want
+just unindex or update our coordinates for a given element. In this
+case we may enable a feature of the library called *Hash mappig*. We
+enable it by setting a key which will represent, using an Hash type, a
+map between the item ID and the current indexed representation:
+
+    myindex.hashkey = "people-by-salary-map"
+
+Once this is enabled, each time we use the `index` method, an hash entry
+will be created at the same time. We can now use two additional methods.
+One will simply remove an item from the index just by ID:
+
+    myindex.unindex_by_id("Josh")
+
+The other is a variant of `index` that remove and re-add the element with
+the updated coordinates:
+
+    myindex.update([46,120000],"Josh")
+
+It is imporatnt to enable this feature after the object is created, and
+consistently for all the queries, so that the Hash and the sorted set
+are in sync. When this feature is enabled, to use `index` is not a good
+idae and `update` should be used instead regardless an existing element
+exists or not. Please rever to `example2.rb` for an example.
+
 Tests
 ===
 
