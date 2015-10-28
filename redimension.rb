@@ -2,12 +2,12 @@ class Redimension
     attr_accessor :debug
     attr_reader :redis, :key, :dim, :prec
 
-    def initialize(redis,key,dim,prec)
+    def initialize(redis,key,dim,prec=64)
         @debug = false
         @redis = redis
         @dim = dim
         @key = key
-        @prec = 64
+        @prec = prec
         @idmap = false
         @binary = false # Default is hex encoding
     end
