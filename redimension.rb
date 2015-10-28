@@ -143,10 +143,30 @@ class Redimension
         vrange = vrange.map{|vr|
             vr[0] < vr[1] ? vr : [vr[1],vr[0]]
         }
-        delta = vrange.map{|vr| vr[1]-vr[0]}.min
+        deltas = vrange.map{|vr| (vr[1]-vr[0])+1}
+        delta = deltas.min
         exp = 1
         while delta > 2
             delta /= 2
+            exp += 1
+        end
+        # If ranges for different dimensions are extremely different in span,
+        # we may end with a too small exponent which will result in a very
+        # big number of queries in order to be very selective. This is most
+        # of the times not a good idea, so at the cost of querying larger
+        # areas and filtering more, we scale 'exp' until we can serve this
+        # request with less than 20 ZRANGEBYLEX commands.
+        #
+        # Note: the magic "20" depends on the number of items inside the
+        # requested range, since it's a tradeoff with filtering items outside
+        # the searched area. It is possible to improve the algorithm by using
+        # ZLEXCOUNT to get the number of items.
+        while true
+            deltas = vrange.map{|vr|
+                (vr[1]/(2**exp))-(vr[0]/(2**exp))+1
+            }
+            ranges = deltas.reduce{|a,b| a*b}
+            break if ranges < 20
             exp += 1
         end
         query_raw(vrange,exp)
