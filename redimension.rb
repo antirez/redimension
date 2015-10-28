@@ -41,10 +41,16 @@ class Redimension
         @redis.zadd(@key,0,ele)
     end
 
-    def unindex(vars)
+    # ZREM according to current position in the space and ID.
+    def unindex(vars,id)
+        # TODO
     end
 
+    # Unidex by just ID in case @idmap is set to true in order to take
+    # an associated Redis hash with ID -> current indexed representation,
+    # so that the user can unindex easily.
     def unindex_id(id)
+        # TODO
     end
 
     # exp is the exponent of two that gives the size of the squares
@@ -53,61 +59,81 @@ class Redimension
     def query_raw(vrange,exp)
         vstart = []
         vend = []
+        # We start scaling our indexes in order to iterate all areas, so
+        # that to move between N-dimensional areas we can just increment
+        # vars.
         vrange.each{|r|
             vstart << r[0]/(2**exp)
             vend << r[1]/(2**exp)
         }
 
+        # Visit all the sub-areas to cover our N-dim search region.
         ranges = []
         notdone = true
+        vcurrent = vstart.dup
         while notdone
-            # Turn each sub-area into a lex query.
+            # For each sub-region, encode all the start-end ranges
+            # for each dimension.
             vrange_start = []
             vrange_end = []
             (0...@dim).each{|i|
-                vrange_start << vstart[i]*(2**exp)
+                vrange_start << vcurrent[i]*(2**exp)
                 vrange_end << (vrange_start[i] | ((2**exp)-1))
             }
-            # Turn it into interleaved form for ZRANGEBYLEX query.
+
+            puts "Logical square #{vcurrent.inspect} from #{vrange_start.inspect} to #{vrange_end.inspect}" if @debug
+
+            # Now we need to combine the ranges for each dimension
+            # into a single lexicographcial query, so we turn
+            # the ranges it into interleaved form.
             s = encode(vrange_start)
             # Now that we have the start of the range, calculate the end
             # by replacing the specified number of bits from 0 to 1.
             e = encode(vrange_end)
             ranges << ["[#{s}:","[#{e}:\xff"]
+            puts "Lex query: #{ranges[-1]}" if @debug
 
             # Increment to loop in N dimensions in order to visit
             # all the sub-areas representing the N dimensional area to
             # query.
             (0...@dim).each{|i|
-                if vstart[i] != vend[i]
-                    vstart[i] += 1
+                if vcurrent[i] != vend[i]
+                    vcurrent[i] += 1
                     break
                 elsif i == dim-1
                     notdone = false; # Visited everything!
                 else
-                    vstart[i] = 0
+                    vcurrent[i] = vstart[i]
                 end
             }
         end
 
-        # Perform ZRANGEBYLEX queries to collect the results from the
-        # defined ranges.
+        # Perform the ZRANGEBYLEX queries to collect the results from the
+        # defined ranges. Use pipelining to speedup.
         allres = @redis.pipelined {
             ranges.each{|range|
                 @redis.zrangebylex(@key,range[0],range[1])
             }
         }
 
-        # Filter items according to the requested limits.
+        # Filter items according to the requested limits. This is needed
+        # since our sub-areas used to cover the whole search area are not
+        # perfectly aligned with boundaries, so we also retrieve elements
+        # outside the searched ranges.
         items = []
         allres.each{|res|
             res.each{|item|
                 fields = item.split(":")
+                skip = false
                 (0...@dim).each{|i|
-                    next if fields[i+1].to_i < vrange[i][0] ||
-                            fields[i+1].to_i > vrange[i][1]
-                    items << fields[1..-2].map{|f| f.to_i} + [fields[-1]]
+                    if fields[i+1].to_i < vrange[i][0] ||
+                       fields[i+1].to_i > vrange[i][1]
+                    then
+                        skip = true
+                        break
+                    end
                 }
+                items << fields[1..-2].map{|f| f.to_i} + [fields[-1]] if !skip
             }
         }
         items
@@ -133,6 +159,7 @@ class Redimension
     # radius, and automatically filters away all the elements outside the
     # specified circular area.
     def query_radius(x,y,exp,radius)
+        # TODO
     end
 end
 

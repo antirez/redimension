@@ -11,6 +11,7 @@ dataset = []
     y = rand(1000)
     dataset << [x,y,id.to_s]
     rn.index([x,y],id)
+    puts "Adding #{x},#{y},#{id}"
     id += 1
 }
 
@@ -40,3 +41,4 @@ dataset = []
         exit
     end
 }
+puts "2D test passed"
