@@ -1,16 +1,11 @@
 TODO
 ====
 
-* Abtract to N dimensions.
-
-* Filter points outside the specified dimensions.
-
-* Use pipelining to send all the ZRANGEBYLEX queries.
-
 * Some way to support pipelined add of multiple points.
-  Perhaps just r.pipelined { idex.add(...) } ?
+  Perhaps just r.pipelined { idex.add(...) } works?
 
-* For queries with very unbalanced dimensions spawn (for example querying
-  a rectangle from 10,10, to 1000,11), it may be good to perform some
-  sampling to check density of points in order to better adapt the
-  query bits size.
+* Select a better exponent for the query by using ZLEXCOUNT to estimate
+  if filtering work would be too big or not to perform compared to the
+  number of additional queries.
+
+* Implement unindex and unindex by ID methods with Hash mapping.
