@@ -26,7 +26,7 @@ class Redimension
             comb = comb ? comb.zip(vbin.split("")) : vbin.split("")
         }
         comb = comb.flatten.compact.join("")
-        comb.to_i.to_s(16).rjust(@prec/4,'0')
+        comb.to_i.to_s(16).rjust(@prec*@dim/4,'0')
     end
 
     # Add a variable with associated data 'id'
