@@ -1,6 +1,3 @@
-require 'rubygems'
-require 'redis'
-
 class Redimension 
     attr_accessor :debug
     attr_reader :redis, :key, :dim, :prec

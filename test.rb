@@ -1,44 +1,59 @@
+require 'rubygems'
+require 'redis'
 require "./redimension.rb"
 
-redis = Redis.new()
-
-redis.del("fuzzy")
-rn = Redimension.new(redis,"fuzzy",2,64)
-id = 0
-dataset = []
-1000.times {
-    x = rand(1000)
-    y = rand(1000)
-    dataset << [x,y,id.to_s]
-    rn.index([x,y],id)
-    puts "Adding #{x},#{y},#{id}"
-    id += 1
-}
-
-1000.times {
-    x0 = rand(1000)
-    y0 = rand(1000)
-    x1 = rand(1000)
-    y1 = rand(1000)
-    x0,x1=x1,x0 if x0>x1
-    y0,y1=y1,y0 if y0>y1
-
-    print "TESTING #{[x0,y0,x1,y1].inspect}: "
-    STDOUT.flush
-
-    start_t = Time.now
-    res1 = rn.query([[x0,x1],[y0,y1]])
-    end_t = Time.now
-    print "#{res1.length} result in #{(end_t-start_t).to_f} seconds\n"
-    res2 = dataset.select{|i|
-        i[0] >= x0 && i[0] <= x1 &&
-        i[1] >= y0 && i[1] <= y1
+def fuzzy_test(dim,items,queries)
+    redis = Redis.new()
+    redis.del("redim-fuzzy")
+    rn = Redimension.new(redis,"redim-fuzzy",dim,64)
+#    rn.debug = true
+    id = 0
+    dataset = []
+    1000.times {
+        vars = []
+        dim.times {vars << rand(1000)}
+        dataset << vars+[id.to_s]
+        rn.index(vars,id)
+        puts "Adding #{dataset[-1].inspect}"
+        id += 1
     }
-    if res1.sort != res2.sort
-        puts "ERROR:"
-        puts res1.sort.inspect
-        puts res2.sort.inspect
-        exit
-    end
-}
-puts "2D test passed"
+
+    1000.times {
+        random = []
+        dim.times {
+            s = rand(1000)
+            e = rand(1000)
+            # Sort the range for the test itself, the library can take
+            # arguments in the wrong order without issues.
+            s,e=e,s if s > e
+            random << [s,e]
+        }
+        print "TESTING #{random.inspect}:"
+        STDOUT.flush
+
+        start_t = Time.now
+        res1 = rn.query(random)
+        end_t = Time.now
+        print "#{res1.length} result in #{(end_t-start_t).to_f} seconds\n"
+        res2 = dataset.select{|i|
+            included = true
+            (0...dim).each{|j|
+                included = false if i[j] < random[j][0] ||
+                                    i[j] > random[j][1]
+            }
+            included
+        }
+        if res1.sort != res2.sort
+            puts "ERROR #{res1.length} VS #{res2.length}:"
+            puts res1.sort.inspect
+            puts res2.sort.inspect
+            exit
+        end
+    }
+    puts "#{dim}D test passed"
+    redis.del("redim-fuzzy")
+end
+
+fuzzy_test(3,1000,1000)
+fuzzy_test(2,1000,1000)
+fuzzy_test(4,1000,1000)
