@@ -2,7 +2,7 @@ Redimension
 ===
 
 Redimension is a Redis multi-dimensional indexing and querying library
-implemented in order to index items in N-dimensions, and then asking elements
+implemented in order to index items in N-dimensions, and then asking for elements
 where each dimension is within the specified ranges.
 
 This library was written for multiple reasons:
