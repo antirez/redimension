@@ -18,7 +18,7 @@ class Redimension
         end
     end
 
-    # Encode two variables into the interleaved representation.
+    # Encode N variables into the bits-interleaved representation.
     def encode(vars)
         comb = false
         vars.each{|v|
