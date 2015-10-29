@@ -34,18 +34,26 @@ Currently the library can index only unsigned integers of the
 specified precision. There are no precision limits, you can index
 integers composed of as much bits as you like: you specify the
 number of bits for each dimension in the constructor when creating
-a Redimension object.
+a `Redimension` object.
 
 An example usage in 2D is the following. Imagine you want to index
 persons by salary and age:
 
-    redis = Redis.new()
-    myindex = Redimension.new(redis,"people-by-salary",2,64)
+    redis = Redic.new
+    myindex = Redimension.new(redis,"people-by-salary", 2, 64)
 
-We created a Redimension object specifying a Redis object that must
-respond to the Redis commands. We specified we want 2D indexing,
-and 64 bits of precision for each dimension. The first argument is
-the key name that will represent the index as a sorted set.
+We created a `Redimension` object specifying a Redis client that
+must implement [Redic's API][redic-api]. We specified we want 2D
+indexing, and 64 bits of precision for each dimension. The first
+argument is the prefix under which the indices will be stored.
+
+Redimention uses two indices: one is a sorted set mapping the item
+IDs to scores, and the other is a hash that maps item IDs to sorted
+set entries. Given the example above, two keys will be created:
+`"people-by-salary:idx"` and `"people-by-salary:map"`.
+
+
+[redic-api]: https://github.com/amakawa/redic#usage
 
 Now we can add elements to our index.
 
@@ -55,12 +63,14 @@ Now we can add elements to our index.
 
 The `index` method takes an array of integers representing the value
 of each dimension for the item, and an item name that will be
-returned when asking for ranges during the query stage.
+returned when asking for ranges during the query stage. Calling
+`index` multiple times with the same item ID doesn't create multiple
+entries. Insted, it updates the existent index.
 
 Querying is simple. In the following query we ask for all the people
 with age between 40 and 50, and salary between 100000 and 115000.
 
-    results = myindex.query([[40,50],[100000,115000]])
+    results = myindex.query([[40, 50], [100000, 115000]])
     Output: [50, 110000, "Pamela"]
 
 Ranges are **always** inclusive. Not a big problem since currently
@@ -73,47 +83,18 @@ with the source code, the file is called `example.rb`.
 Unindexing
 ===
 
-There are two ways in order to remove indexed data from the index.
-One is to specify again the coordinates and the ID, using the
-`unindex` method:
+In order to remove an indexed item, call `unindex` and pass the
+item ID as a parameter:
 
-    myindex.unindex([45,120000],"Josh")
-
-However sometimes it is no longer possible to have the old data,
-we want just unindex or update our coordinates for a given element.
-In this case we may enable a feature of the library called *Hash
-mapping*. We enable it by setting a key which will represent, using
-an Hash type, a map between the item ID and the current indexed
-representation:
-
-    myindex.hashkey = "people-by-salary-map"
-
-Once this is enabled, each time we use the `index` method, an hash
-entry will be created at the same time. We can now use two additional
-methods.  One will simply remove an item from the index just by ID:
-
-    myindex.unindex_by_id("Josh")
-
-The other is a variant of `index` that removes and re-adds the
-element with the updated coordinates:
-
-    myindex.update([46,120000],"Josh")
-
-It is imporatnt to enable this feature after the object is created,
-and consistently for all the queries, so that the Hash and the
-sorted set are in sync. When this feature is enabled, to use `index`
-is not a good idea and `update` should be used instead regardless
-the added element areadly exists or not inside the index. Please
-refer to `example2.rb` for an example.
+    myindex.unindex("Josh")
 
 Tests
 ===
 
-There is a fuzzy tester called `test.rb` that tests the library in
-2D, 3D and 4D against Ruby-side filtering of elements within the
-ranges.  In order to run the test just execute:
-
-    ruby ./test.rb
+Make sure you have `cutest` installed, and execute `make` for running
+the tests. You should set the environment variable `REDIS_TEST_URL`
+for the tests to work. Also note that the Redis instance referenced
+by that URL will be flushed.
 
 License
 ===

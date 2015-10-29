@@ -2,8 +2,7 @@ require_relative "../lib/redimension"
 
 setup do
   redis = Redic.new(ENV.fetch("REDIS_TEST_URL"))
-  keys = %w(people-by-salary people-by-salary-map redim-fuzzy)
-  redis.call("DEL", *keys)
+  redis.call("FLUSHDB")
   redis
 end
 
@@ -22,12 +21,12 @@ test do |redis|
 end
 
 test do |redis|
-  myindex = Redimension.new(redis, "people-by-salary", 2, 64)
+  myindex = Redimension.new(redis, "people-by-salary", 2)
 
-  myindex.update([45, 120000], "Josh")
-  myindex.update([50, 110000], "Pamela")
-  myindex.update([41, 100000], "George")
-  myindex.update([30, 125000], "Angela")
+  myindex.index([45, 120000], "Josh")
+  myindex.index([50, 110000], "Pamela")
+  myindex.index([41, 100000], "George")
+  myindex.index([30, 125000], "Angela")
 
   results = myindex.query([[40, 50], [100000, 115000]])
 
@@ -38,7 +37,7 @@ test do |redis|
 
   assert_equal expected, results
 
-  myindex.unindex_by_id("Pamela")
+  myindex.unindex("Pamela")
 
   results = myindex.query([[40, 50], [100000, 115000]])
 
@@ -46,7 +45,7 @@ test do |redis|
 
   assert_equal expected, results
 
-  myindex.update([42, 100000], "George")
+  myindex.index([42, 100000], "George")
 
   results = myindex.query([[40,50],[100000,115000]])
 
@@ -57,7 +56,8 @@ end
 
 test "fuzzy" do |redis|
   fuzzy = -> (dim, items, queries) {
-    redis.call("DEL", "redim-fuzzy")
+    redis.call("DEL", "redim-fuzzy:idx")
+    redis.call("DEL", "redim-fuzzy:map")
 
     rn = Redimension.new(redis, "redim-fuzzy", dim, 64)
     id = 0

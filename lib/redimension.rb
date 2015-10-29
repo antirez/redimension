@@ -1,16 +1,17 @@
 require "redic"
 
 class Redimension
-  attr_accessor :debug, :hashkey
-  attr_reader :redis, :key, :dim, :prec
+  attr_reader :redis, :prefix, :dim, :prec
 
-  def initialize(redis, key, dim, prec = 64)
-    @debug = false
+  def initialize(redis, prefix, dim, prec = 64)
     @redis = redis
+    @prefix = prefix
     @dim = dim
-    @key = key
+
+    @idx = sprintf("%s:idx", prefix)
+    @map = sprintf("%s:map", prefix)
+
     @prec = prec
-    @hashkey = sprintf("%s-map", key)
   end
 
   def check_dim(vars)
@@ -22,77 +23,58 @@ class Redimension
   # Encode N variables into the bits-interleaved representation.
   def encode(vars)
     comb = false
-    vars.each{|v|
-      vbin = v.to_s(2).rjust(@prec,'0')
-      comb = comb ? comb.zip(vbin.split("")) : vbin.split("")
-    }
-    comb = comb.flatten.compact.join("")
-    comb.to_i.to_s(16).rjust(@prec*@dim/4,'0')
+
+    vars.each do |v|
+      vbin = v.to_s(2).rjust(@prec, '0')
+      comb = comb ? comb.zip(vbin.chars) : vbin.chars
+    end
+
+    comb.join.to_i.to_s(16).rjust(@prec * @dim / 4, '0')
   end
 
   # Encode an element coordinates and ID as the whole string to add
   # into the sorted set.
-  def elestring(vars,id)
+  def elestring(vars, id)
     check_dim(vars)
     ele = encode(vars)
-    vars.each{|v| ele << ":#{v}"}
+    vars.each { |v| ele << ":#{v}" }
     ele << ":#{id}"
   end
 
   # Add a variable with associated data 'id'
-  def index(vars,id)
+  def index(vars, id)
     ele = elestring(vars,id)
+    oldele = @redis.call("HGET", @map, id)
 
-    @redis.queue("ZADD", @key, 0, ele)
-    @redis.queue("HSET", @hashkey, id, ele)
+    @redis.queue("ZREM", @idx, oldele)
+    @redis.queue("HDEL", @map, id)
+    @redis.queue("ZADD", @idx, 0, ele)
+    @redis.queue("HSET", @map, id, ele)
     @redis.commit
   end
 
-  # ZREM according to current position in the space and ID.
-  def unindex(vars,id)
-    @redis.call("ZREM", @key, elestring(vars, id))
-  end
+  # Unindex by item ID
+  def unindex(id)
+    ele = @redis.call("HGET", @map, id)
 
-  # Unidex by just ID in case @hashkey is set to true in order to take
-  # an associated Redis hash with ID -> current indexed representation,
-  # so that the user can unindex easily.
-  def unindex_by_id(id)
-    raise "Please specifiy an hash key with #hashkey to enable mapping" if !@hashkey
-
-    ele = @redis.call("HGET", @hashkey, id)
-
-    @redis.queue("ZREM", @key, ele)
-    @redis.queue("HDEL", @hashkey, ele)
+    @redis.queue("ZREM", @idx, ele)
+    @redis.queue("HDEL", @map, ele)
     @redis.commit
   end
 
-  # Like #index but makes sure to remove the old index for the specified
-  # id. Requires hash mapping enabled.
-  def update(vars,id)
-    raise "Please specifiy an hash key with #hashkey to enable mapping" if !@hashkey
-    ele = elestring(vars,id)
-    oldele = @redis.call("HGET", @hashkey, id)
-
-    @redis.queue("ZREM", @key, oldele)
-    @redis.queue("HDEL", @hashkey, id)
-    @redis.queue("ZADD", @key, 0, ele)
-    @redis.queue("HSET", @hashkey, id, ele)
-    @redis.commit
-  end
-
-  # exp is the exponent of two that gives the size of the squares
+  # `exp` is the exponent of two that gives the size of the squares
   # we use in the range query. N times the exponent is the number
   # of bits we unset and set to get the start and end points of the range.
   def query_raw(vrange, exp)
     vstart = []
-    vend  = []
+    vend   = []
 
     # We start scaling our indexes in order to iterate all areas, so
     # that to move between N-dimensional areas we can just increment
     # vars.
     vrange.each do |r|
       vstart << r[0] / (2**exp)
-      vend  << r[1] / (2**exp)
+      vend   << r[1] / (2**exp)
     end
 
     # Visit all the sub-areas to cover our N-dim search region.
@@ -107,12 +89,10 @@ class Redimension
       vrange_start = []
       vrange_end = []
 
-      (0...@dim).each do |i|
+      @dim.times do |i|
         vrange_start << vcurrent[i] * (2**exp)
-        vrange_end  << (vrange_start[i] | ((2**exp)-1))
+        vrange_end  << (vrange_start[i] | ((2**exp) - 1))
       end
-
-      puts "Logical square #{vcurrent.inspect} from #{vrange_start.inspect} to #{vrange_end.inspect}" if @debug
 
       # Now we need to combine the ranges for each dimension
       # into a single lexicographcial query, so we turn
@@ -123,12 +103,11 @@ class Redimension
       # by replacing the specified number of bits from 0 to 1.
       e = encode(vrange_end)
       ranges << ["[#{s}:","[#{e}:\xff"]
-      puts "Lex query: #{ranges[-1]}" if @debug
 
       # Increment to loop in N dimensions in order to visit
       # all the sub-areas representing the N dimensional area to
       # query.
-      (0...@dim).each do |i|
+      @dim.times do |i|
         if vcurrent[i] != vend[i]
           vcurrent[i] += 1
           break
@@ -143,7 +122,7 @@ class Redimension
     # Perform the ZRANGEBYLEX queries to collect the results from the
     # defined ranges. Use pipelining to speedup.
     ranges.each do |range|
-     @redis.queue("ZRANGEBYLEX", @key, range[0], range[1])
+      @redis.queue("ZRANGEBYLEX", @idx, range[0], range[1])
     end
 
     allres = @redis.commit
@@ -156,19 +135,22 @@ class Redimension
 
     allres.each do |res|
       res.each do |item|
-        fields = item.split(":")
         skip = false
 
-        (0...@dim).each do |i|
-          if fields[i+1].to_i < vrange[i][0] ||
-            fields[i+1].to_i > vrange[i][1]
-          then
+        _, *values, id = item.split(":")
+
+        values.map!(&:to_i)
+
+        @dim.times do |i|
+          if values[i] < vrange[i][0] || values[i] > vrange[i][1]
             skip = true
             break
           end
         end
 
-        items << fields[1..-2].map { |f| f.to_i } + [fields[-1]] if !skip
+        if skip == false
+          items << values + [id]
+        end
       end
     end
 
@@ -180,10 +162,10 @@ class Redimension
   # Also calculates the exponent for the query_raw masking.
   def query(vrange)
     vrange = vrange.map do |vr|
-      vr[0] < vr[1] ? vr : [vr[1],vr[0]]
+      vr[0] < vr[1] ? vr : [vr[1], vr[0]]
     end
 
-    deltas = vrange.map { |vr| (vr[1]-vr[0])+1 }
+    deltas = vrange.map { |vr| (vr[1] - vr[0]) + 1 }
     delta = deltas.min
     exp = 1
 
@@ -205,21 +187,21 @@ class Redimension
     # ZLEXCOUNT to get the number of items.
     while true
       deltas = vrange.map do |vr|
-        (vr[1]/(2**exp))-(vr[0]/(2**exp))+1
+        (vr[1] / (2**exp)) - (vr[0] / (2**exp)) + 1
       end
 
-      ranges = deltas.reduce { |a,b| a*b }
+      ranges = deltas.reduce { |a, b| a * b }
       break if ranges < 20
       exp += 1
     end
 
-    query_raw(vrange,exp)
+    query_raw(vrange, exp)
   end
 
   # Similar to #query but takes just the center of the query area and a
   # radius, and automatically filters away all the elements outside the
   # specified circular area.
-  def query_radius(x,y,exp,radius)
+  def query_radius(x, y, exp, radius)
     # TODO
   end
 end
