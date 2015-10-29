@@ -70,7 +70,7 @@ is to specify again the coordinates and the ID, using the `unindex` method:
 
 However sometimes it is no longer possible to have the old data, we want
 just unindex or update our coordinates for a given element. In this
-case we may enable a feature of the library called *Hash mappig*. We
+case we may enable a feature of the library called *Hash mapping*. We
 enable it by setting a key which will represent, using an Hash type, a
 map between the item ID and the current indexed representation:
 
@@ -91,7 +91,7 @@ It is imporatnt to enable this feature after the object is created, and
 consistently for all the queries, so that the Hash and the sorted set
 are in sync. When this feature is enabled, to use `index` is not a good
 idea and `update` should be used instead regardless the added element
-areadly exists or not inside the index. Please rever to `example2.rb` for
+areadly exists or not inside the index. Please refer to `example2.rb` for
 an example.
 
 Tests
