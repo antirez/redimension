@@ -91,7 +91,7 @@ It is imporatnt to enable this feature after the object is created, and
 consistently for all the queries, so that the Hash and the sorted set
 are in sync. When this feature is enabled, to use `index` is not a good
 idea and `update` should be used instead regardless the added element
-areadly exists or not inside the index. Please refer to `example2.rb` for
+already exists or not inside the index. Please refer to `example2.rb` for
 an example.
 
 Tests
