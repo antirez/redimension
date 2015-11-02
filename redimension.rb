@@ -168,6 +168,7 @@ class Redimension
     # parameters so that x0 < x1 and y0 < y1 and so forth.
     # Also calculates the exponent for the query_raw masking.
     def query(vrange)
+        check_dim(vrange)
         vrange = vrange.map{|vr|
             vr[0] < vr[1] ? vr : [vr[1],vr[0]]
         }
