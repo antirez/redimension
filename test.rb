@@ -8,7 +8,7 @@ def fuzzy_test(dim,items,queries)
     rn = Redimension.new(redis,"redim-fuzzy",dim,64)
     id = 0
     dataset = []
-    1000.times {
+    items.times {
         vars = []
         dim.times {vars << rand(1000)}
         dataset << vars+[id.to_s]
@@ -17,7 +17,7 @@ def fuzzy_test(dim,items,queries)
         id += 1
     }
 
-    1000.times {
+    queries.times {
         random = []
         dim.times {
             s = rand(1000)
