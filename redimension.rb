@@ -43,7 +43,7 @@ class Redimension
         ele = elestring(vars,id)
         @redis.multi {
             @redis.zadd(@key,0,ele)
-            @redis.hset(@hashkey,id,ele)
+            @redis.hset(@hashkey,id,ele) if @hashkey
         }
     end
 
