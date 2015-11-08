@@ -26,7 +26,7 @@ class Redimension
             comb = comb ? comb.zip(vbin.split("")) : vbin.split("")
         }
         comb = comb.flatten.compact.join("")
-        comb.to_i.to_s(16).rjust(@prec*@dim/4,'0')
+        ("%x" % comb.to_i(2)).rjust(@prec*@dim/4,'0')
     end
 
     # Encode an element coordinates and ID as the whole string to add
